@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "javac build",
+            "type": "shell",
+            "command": "javac",
+            "args": [
+                "-d", "out/production",
+                "-encoding", "utf8",
+                "-sourcepath", "src",
+                "src/**/*.java"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            
+        }
+    ]
+} 
