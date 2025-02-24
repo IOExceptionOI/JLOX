@@ -1,17 +1,24 @@
 package com.craftinginterpreters.lox;
 
 import static com.craftinginterpreters.lox.TokenType.*;
-import java.time.Period;
-
 import java.util.List;
 
 
 public class Parser {
+    private static class ParseError extends RuntimeException{}
     private final List<Token> tokens;
     private int current = 0;
 
     Parser(List<Token> tokens){
         this.tokens = tokens;
+    }
+
+    Expr parse(){
+        try{
+            return expression();
+        }catch(ParseError error){
+            return null;
+        }
     }
 
     //! expression -> equality
@@ -161,5 +168,46 @@ public class Parser {
             consume(RIGHT_PAREN, "Expect ')' after expression");
             return new Expr.Grouping(expr);
         }
+
+        throw error(peek(), "Expect exprssion.");
     }
+    
+    private Token consume(TokenType type, String message){
+        if(check(type)){
+            return advance();
+        }
+
+        throw error(peek(), message);
+    }
+
+    private ParseError error(Token token, String message){
+        Lox.error(token, message);
+        return new ParseError();
+    }
+
+    private void synchronize(){
+        // panic_token ';'
+        advance();
+
+        while(!isAtEnd()){
+            if(previous().type == SEMICOLON){
+                return;
+            }
+
+            switch(peek().type){
+                case CLASS:
+                case FUN:
+                case VAR:
+                case FOR:
+                case IF:
+                case WHILE:
+                case PRINT:
+                case RETURN:
+                    return;
+            }
+
+            advance();
+        }
+    }
+
 }

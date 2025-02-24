@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "javac",
             "args": [
-                "-d", "out/production",
+                "-d", "out/",
                 "-encoding", "utf8",
                 "-sourcepath", "src",
                 "src/**/*.java"
