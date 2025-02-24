@@ -1,7 +1,6 @@
 package com.craftinginterpreters.lox;
 
 import static com.craftinginterpreters.lox.TokenType.*;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -140,10 +139,8 @@ public class Scanner {
 
     private void string(){
         while(peek() != '"' && !isAtEnd()){
-            if(peek() == '\n'){
-                line++;
-                advance();
-            }
+            if(peek() == '\n') line++;
+            advance();
         }
 
         if(isAtEnd()){
@@ -151,9 +148,9 @@ public class Scanner {
             return;
         }
 
-        // peek() == '"'
+        // the closing ".
         advance();
-        // start == current == '"'
+        // Trim the surrouding quotes.
         String value = source.substring(start + 1, current - 1);
         addToken(STRING, value);
     }
@@ -161,33 +158,19 @@ public class Scanner {
         return c >= '0' && c <= '9';
     }
     private void number(){
-        while(isDigit(peek()) && !isAtEnd()){
+        while(isDigit(peek())){
             advance();
         }
-
-        if(isAtEnd()){
-            Lox.error(line, "Unterminated number.");
-            return;
-        }
         
-        // 123.xxx
-        if(peek() == '.'){
-            // 123.456
-            if(isDigit(peekNext())){
-                advance();
-                while(isDigit(peek()) && !isAtEnd()){
-                    advance();
-                } 
-                if(isAtEnd()){
-                    Lox.error(line, "Unterminated fractional part.");
-                    return;
-                }
+        // Look for fractional part
+        if(peek() == '.' && isDigit(peekNext())){
+           // consume the '.' 
+           advance();
 
-            // 123.abc
-            } else{
-                Lox.error(line, "Error fractional part of a number.");
-            }
+           while(isDigit(peek())) advance();
         }
+       
+        
         // correct number : 123.456
         addToken(NUMBER, Double.valueOf(source.substring(start, current)));
     
@@ -201,12 +184,8 @@ public class Scanner {
         return isAlpha(c) || isDigit(c);
     }
     private void identifier(){
-        while(isAlphaNumeric(peek()) && !isAtEnd()){
-            advance();
-        }
-        if(isAtEnd()){
-            Lox.error(line, "Unterminated identifier.");
-        }
+        while(isAlphaNumeric(peek())) advance();
+        
         String text = source.substring(start, current);
         TokenType type = keywords.get(text);
         if(type == null) type = IDENTIFIER;
