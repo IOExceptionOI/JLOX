@@ -9,6 +9,28 @@ public class Interpreter implements Expr.Visitor<Object>,
     private Environment environment = new Environment();
 
     @Override
+    public Void visitBlockStmt(Stmt.Block stmt){
+        executeBlock(stmt.statements, new Environment(environment));
+        return null;
+    }
+
+    void executeBlock(List<Stmt> statements, Environment environment){
+        // record the enclosing environment
+        Environment previous = this.environment;
+        try{
+            // switch to the inner environment
+            this.environment = environment;
+
+            for(Stmt statement : statements){
+                execute(statement);
+            }
+        // even though an error is thrown, it return to the enclosing environment
+        // which is very useful in REPL mode 
+        }finally{
+            this.environment = previous;
+        }
+    }
+    @Override
     public Void visitVarStmt(Stmt.Var stmt){
         Object value = null;
         if(stmt.initializer != null){
