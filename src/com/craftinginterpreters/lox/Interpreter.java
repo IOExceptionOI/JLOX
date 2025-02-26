@@ -1,14 +1,41 @@
 package com.craftinginterpreters.lox;
 
+import java.util.List;
 
 
-public class Interpreter implements Expr.Visitor<Object>{
+public class Interpreter implements Expr.Visitor<Object>,
+                                    Stmt.Visitor<Void>{
 
-    void interpret(Expr expression){
-        try{
-            Object value = evaluate(expression);
-            System.out.println(stringfy(value));
-        }catch(RuntimeError error){
+    private Environment environment = new Environment();
+
+    @Override
+    public Void visitVarStmt(Stmt.Var stmt){
+        Object value = null;
+        if(stmt.initializer != null){
+            value = evaluate(stmt.initializer);
+        }
+
+        environment.define(stmt.name.lexeme, value);
+        return null;
+    }
+
+    @Override
+    public Object visitAssignExpr(Expr.Assign expr){
+        Object value = evaluate(expr.value);
+        environment.assign(expr.name, value);
+        return value;
+    }
+
+    @Override
+    public Object visitVariableExpr(Expr.Variable expr){
+        return environment.get(expr.name);
+    }
+    void interpret(List<Stmt> statements){
+        try {
+           for(Stmt stmt : statements){
+                execute(stmt);
+           }
+        } catch (RuntimeError error) {
             Lox.runtimeError(error);
         }
     }
@@ -25,6 +52,20 @@ public class Interpreter implements Expr.Visitor<Object>{
         }
 
         return object.toString();
+    }
+    @Override
+    public Void visitExpressionStmt(Stmt.Expression stmt){
+        evaluate(stmt.expression);
+        return null;
+    }
+    @Override
+    public Void visitPrintStmt(Stmt.Print stmt){
+        Object value = evaluate(stmt.expression);
+        System.out.println(stringfy(value));
+        return null;
+    }
+    private void execute(Stmt stmt){
+        stmt.accept(this);
     }
     @Override
     public Object visitLiteralExpr(Expr.Literal expr){
