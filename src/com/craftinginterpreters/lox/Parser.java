@@ -88,7 +88,10 @@ public class Parser {
     //!            | whileStmt
     //!            | forStmt
     //!            | block
+    //!            | returnStmt
+
     private Stmt statement(){
+        if(match(RETURN)) return returnStatement();
         if(match(FOR)) return forStatement();
         if(match(IF)) return ifStatement();
         if(match(PRINT)) return printStatement();
@@ -98,6 +101,18 @@ public class Parser {
         return expressionStatement();
     }
 
+    //! returnStmt -> "return" expression? ";"
+    private Stmt returnStatement(){
+        // we need the RETURN Token to report error when in the scope of a function
+        Token keyword = previous();
+        Expr value = null;
+        if(!check(SEMICOLON)){
+            value = expression();
+        }
+
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Stmt.Return(keyword, value);
+    }
     //! forStmt -> "for" "(" (varDecl | exprStmt | ";") expression? ";" expression? ")"  statement
     private Stmt forStatement(){
         consume(LEFT_PAREN, "Expect '(' after 'for'.");
