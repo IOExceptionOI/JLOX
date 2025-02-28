@@ -7,6 +7,7 @@ abstract class Stmt{
     abstract <R> R accept(Visitor<R> visitor);
 
     interface Visitor<R>{
+        R visitFunctionStmt(Function stmt);
         R visitBlockStmt(Block stmt);
         R visitExpressionStmt(Expression stmt);
         R visitIfStmt(If stmt);
@@ -15,6 +16,23 @@ abstract class Stmt{
         R visitWhileStmt(While stmt);
     }
 
+    static class Function extends Stmt{
+        Function(Token name, List<Token> params, List<Stmt> body){
+            this.name = name;
+            this.params = params;
+            this.body = body;
+        }
+
+        final Token name;
+        final List<Token> params;
+        final List<Stmt> body;
+
+        @Override
+        <R> R accept(Visitor<R> visitor){
+            return visitor.visitFunctionStmt(this);
+        }
+
+    }
     static class Block extends Stmt{
         Block(List<Stmt> statements){
             this.statements = statements;
