@@ -49,15 +49,24 @@ public class Lox{
     }
 
     private static void run(String source){
+        // Scanner (Lexical Analysis)
         Scanner scanner = new Scanner(source);
         List<Token> tokens = scanner.scanTokens();
+        // Parser (Syntax Analysis)
         Parser parser = new Parser(tokens);
         List<Stmt> statements = parser.parse();
 
-        if (hadError){
-            return;
-        }
+        // If any ParseError happens, we skip the following operation.
+        if (hadError) return;
 
+        // Resolver (Semantic Analysis)
+        Resolver resolver = new Resolver(interpreter);
+        resolver.resolve(statements);
+
+        // If any ResolveError happens, we skip the following operation.
+        if (hadError) return;
+
+        // Interpreter (Execution)
         interpreter.interpret(statements);
     }
 

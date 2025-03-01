@@ -196,9 +196,16 @@ public class Scanner {
         if(current + 1 >= source.length()) return '\0';
         return source.charAt(current + 1);
     }
+
+    // intermediate addToken for Token without literal
     private void addToken(TokenType type){
         addToken(type, null);
     }
+
+    // addToken with 2 cases:
+    // 1. Token with literal
+    // 2. Token without literal (using previous addToken as intermediate)
+    // add extra information : 1. lexeme(text) 2.line
     private void addToken(TokenType type, Object literal){
         String text = source.substring(start, current);
         tokens.add(new Token(type, text, literal, line));
