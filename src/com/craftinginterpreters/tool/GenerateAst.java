@@ -15,6 +15,8 @@ public class GenerateAst {
       } 
       String outputDir = args[0];
       defineAst(outputDir, "Expr", Arrays.asList(
+        "Set : Expr object, Token name, Expr value",
+        "Get : Expr object, Token name",
         "Call : Expr callee, Token paren, List<Expr> arguments",
         "Assign : Token name, Expr value",
         "Logical : Expr left, Token operator, Expr right",
@@ -26,6 +28,7 @@ public class GenerateAst {
       ));
 
       defineAst(outputDir, "Stmt", Arrays.asList(
+        "Class : Token name, List<Stmt.Function> methods",
         "Return : Token keyword, Expr value",
         "Function : Token name, List<Token> params, List<Stmt> body",
         "Block : List<Stmt> statements",

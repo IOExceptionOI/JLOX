@@ -42,12 +42,14 @@ class Environment {
         return environment;
     }
 
-    void define(String name, Object value){
-        values.put(name, value);
-    }
+    
 
     // Environment Chain
 
+    void define(String name, Object value){
+        values.put(name, value);
+    }
+    
     // using the environment chain
     void assign(Token name, Object value){
         // inner first

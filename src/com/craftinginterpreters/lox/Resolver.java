@@ -69,6 +69,13 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     // Stmts for traverse
 
     @Override
+    public Void visitClassStmt(Stmt.Class stmt) {
+        declare(stmt.name);
+        define(stmt.name);
+        return null;
+    }
+    
+    @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
         resolve(stmt.expression);
         return null;
@@ -130,6 +137,21 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     }
 
     // Exprs for traverse
+
+    @Override
+    public Void visitSetExpr(Expr.Set expr) {
+        // Again, like Expr.Get, the property itself is dynamically evaluated, so there’s nothing to resolve there.
+        resolve(expr.object);
+        resolve(expr.value);
+        return null;
+    }
+    @Override
+    public Void visitGetExpr(Expr.Get expr) {
+        // properties are looked up dynamically, so no need for resolution
+        resolve(expr.object);
+        return null;
+    }
+
     @Override
     public Void visitBinaryExpr(Expr.Binary expr) {
         resolve(expr.left);

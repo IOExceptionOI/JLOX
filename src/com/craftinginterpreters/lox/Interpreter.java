@@ -32,6 +32,15 @@ public class Interpreter implements Expr.Visitor<Object>,
    
 
     @Override
+    public Void visitClassStmt(Stmt.Class stmt) {
+        // spilt the declaration and definition for allowing reference to the class inside its own method
+        environment.define(stmt.name.lexeme, null);
+        LoxClass klass = new LoxClass(stmt.name.lexeme);
+        environment.assign(stmt.name, klass);
+        return null;
+    }
+
+    @Override
     public Void visitReturnStmt(Stmt.Return stmt){
         // the default return value is nil
         Object value = null;
@@ -97,6 +106,32 @@ public class Interpreter implements Expr.Visitor<Object>,
 
         environment.define(stmt.name.lexeme, value);
         return null;
+    }
+
+
+    // Exprs
+    
+    @Override
+    public Object visitSetExpr(Expr.Set expr) {
+        Object object = evaluate(expr.object);
+
+        if (!(object instanceof LoxInstance)) {
+            throw new RuntimeError(expr.name, "Obly instance have fields.");
+        }
+
+        Object value = evaluate(expr.value);
+        ((LoxInstance)object).set(expr.name, value);
+        return value;
+    }
+    
+    @Override
+    public Object visitGetExpr(Expr.Get expr) {
+        Object object = evaluate(expr.object);
+        if (object instanceof LoxInstance) {
+            return ((LoxInstance) object).get(expr.name);
+        }
+
+        throw new RuntimeError(expr.name, "Only instance have properties.");
     }
 
     @Override

@@ -26,23 +26,40 @@ public class Parser {
     //! declaration -> funDecl
     //!              | varDecl
     //!              | statement
+    //!              | classDecl
 
 
-    
+
     private Stmt declaration(){
         try {
-           //! funDecl -> “fun" function;
-           if(match(FUN)) return function("function");
-           //! varDecl -> "var" varDeclaration
-           if(match(VAR)) return varDeclaration(); 
-           return statement();
+            //! classDecl -> "class" IDENTIFIER "{" function* "}"
+            if (match(CLASS)) return classDeclaration();
+            //! funDecl -> “fun" function;
+            if (match(FUN)) return function("function");
+            //! varDecl -> "var" varDeclaration
+            if (match(VAR)) return varDeclaration(); 
+            return statement();
         } catch (ParseError error) {
-            synchronize();
-            return null;
+                synchronize();
+                return null;
         }
     }
 
+    //! classDecl -> "class" IDENTIFIER "{" function* "}"
+    private Stmt classDeclaration(){
+        Token name = consume(IDENTIFIER, "Expect class name.");
+        consume(LEFT_BRACE, "Expect '{' before class body.");
 
+        List<Stmt.Function> methods = new ArrayList<>();
+        while(!check(RIGHT_BRACE) && !isAtEnd()){
+           methods.add(function("method")); 
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after class body.");
+
+        return new Stmt.Class(name, methods);
+    }
+    
     //! function -> IDENTIFIER "(" parameters?")" block
     private Stmt.Function function(String kind){
         Token name = consume(IDENTIFIER, "Exepect " + kind + " name.");
@@ -210,7 +227,9 @@ public class Parser {
         return assignment();
     }
 
-    //! assignment -> IDENTIFIER "=" assignment
+    // 1. Unlike getters, setters don't chain
+    // 2. the reference to call allows any high precedence expression before the last dot, including any number of getters
+    //! assignment -> ( call "." )? IDENTIFIER "=" assignment
     //!             | logical_or
 
     private Expr assignment(){
@@ -221,9 +240,12 @@ public class Parser {
             // right-associativity -> recursive
             Expr value = assignment();
 
-            if(expr instanceof Expr.Variable){
+            if (expr instanceof Expr.Variable) {
                 Token name = ((Expr.Variable)expr).name;
                 return new Expr.Assign(name, value);
+            } else if(expr instanceof Expr.Get) {
+                Expr.Get get = (Expr.Get)expr;
+                return new Expr.Set(get.object, get.name, value);
             }
 
             error(equals, "Invalid assignment target.");
@@ -383,15 +405,20 @@ public class Parser {
         }
         return call();
     }
-    //! call -> primary ( "(" arguments?")" )*
+    //! call -> primary ( "(" arguments?")" | "." IDENTIFIER )*
+
     private Expr call(){
         Expr expr = primary();
 
         // recursive call finishCall to trace the call-chain
+        // recursive update expr with callExpr or getExpr
         while(true){
-            if(match(LEFT_PAREN)){
+            if (match(LEFT_PAREN)){
                 expr = finishCall(expr);
-            }else{
+            } else if (match(DOT)){
+                Token name = consume(IDENTIFIER, "Expect property name after '.'.");
+                expr = new Expr.Get(expr, name);
+            } else {
                 break;
             }
         }
