@@ -35,7 +35,16 @@ public class Interpreter implements Expr.Visitor<Object>,
     public Void visitClassStmt(Stmt.Class stmt) {
         // spilt the declaration and definition for allowing reference to the class inside its own method
         environment.define(stmt.name.lexeme, null);
-        LoxClass klass = new LoxClass(stmt.name.lexeme);
+
+        // using a local map to store the methods
+        Map<String, LoxFunction> methods = new HashMap<>();
+        for (Stmt.Function method : stmt.methods) {
+            // the current environment where the class is defined is the closure ot the methods
+            LoxFunction function = new LoxFunction(method, environment);
+            methods.put(method.name.lexeme, function);
+        }
+
+        LoxClass klass = new LoxClass(stmt.name.lexeme, methods);
         environment.assign(stmt.name, klass);
         return null;
     }
@@ -123,7 +132,7 @@ public class Interpreter implements Expr.Visitor<Object>,
         ((LoxInstance)object).set(expr.name, value);
         return value;
     }
-    
+
     @Override
     public Object visitGetExpr(Expr.Get expr) {
         Object object = evaluate(expr.object);

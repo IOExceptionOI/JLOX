@@ -16,7 +16,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     
     private enum FunctionType {
         NONE,
-        FUNCTION
+        FUNCTION,
+        METHOD
     }
 
     Resolver(Interpreter interpreter) {
@@ -59,6 +60,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     @Override
     public Void visitVarStmt(Stmt.Var stmt) {
         declare(stmt.name);
+        // before the initialization, the var isn't readily initialiezd; 
+        // so we just declare it, and if the initializer use itself(undefined), it will raise error
         if (stmt.initializer != null) {
             resolve(stmt.initializer);
         }
@@ -70,8 +73,15 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitClassStmt(Stmt.Class stmt) {
+        // declare and define the name of the class for forward reference inside the class body
         declare(stmt.name);
         define(stmt.name);
+
+        // resolve each method of the class
+        for (Stmt.Function method : stmt.methods) {
+            FunctionType declaration = FunctionType.METHOD;
+            resolveFunction(method, declaration);
+        }
         return null;
     }
     
@@ -83,6 +93,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitIfStmt(Stmt.If stmt){
+        // In resolution, there is no control-flow
+        // So we resolve all the three: conditon, thenBranch, elseBranch
         resolve(stmt.condition);
         resolve(stmt.thenBranch);
         if(stmt.elseBranch != null) resolve(stmt.elseBranch);
@@ -97,6 +109,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitReturnStmt(Stmt.Return stmt) {
+        // In resolution, we can also help to check whether a returnStmt is inside a function/method body
         if (currentFunction == FunctionType.NONE) {
             Lox.error(stmt.keyword, "Can't return from top-level code.");
         }
@@ -107,6 +120,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitWhileStmt(Stmt.While stmt) {
+        // In resolution, there is no control-flow
+        // So we resolve both the condition and while-body
         resolve(stmt.condition);
         resolve(stmt.body);
 
@@ -119,12 +134,14 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitVariableExpr(Expr.Variable expr) {
-        // Stack.peek() ==> the used expr is the currently being initialized variable
+        // this case can only happen when a local variable is initialized with the (undefined) itself
+        // because before the varStmt resolve its initializer, the variable is just decalred rather than defined
         if(!scopes.isEmpty() &&
             scopes.peek().get(expr.name.lexeme) == Boolean.FALSE){
                 Lox.error(expr.name, "Can't read local variable in its own initializer.");
             }
-
+        
+        // when we do visit a variable, we need to resolve it locally to match it to the correspoding environment. 
         resolveLocal(expr, expr.name);
         return null;
     }
@@ -132,6 +149,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     @Override
     public Void visitAssignExpr(Expr.Assign expr) {
         resolve(expr.value);
+        // the lhs of a AssignExpr can only be Token => variable
+        // when we do visit a lhs variable, we need to resolve it locally to match it to the correspoding environment. 
         resolveLocal(expr, expr.name);
         return null;
     }
@@ -163,6 +182,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     public Void visitCallExpr(Expr.Call expr) {
         resolve(expr.callee);
 
+        // in funtion/method definiton, we don't need to resolve the formal parameters
+        // but in real callExpr, we need to resolve the arguments to match the corresponding environment
         for (Expr argument : expr.arguments) {
             resolve(argument);
         }
@@ -178,11 +199,15 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     
     @Override
     public Void visitLiteralExpr(Expr.Literal expr) {
+        // Literal are just real objects without the encapsulation of a variable
+        // so no need to resolve
         return null;
     }
 
     @Override
     public Void visitLogicalExpr(Expr.Logical expr) {
+        // In resolution, we don't short-curcit the logicalExpr
+        // Instead, we resolve both the lhs and rhs expression
         resolve(expr.left);
         resolve(expr.right);
         return null;
@@ -203,6 +228,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
                 interpreter.resolve(expr, scopes.size() - 1 - i);
                 return;
             }
+            // if no-match, we don't use intepreter.resolve to add resolution information for the global variable
         }
     }
 

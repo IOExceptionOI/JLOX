@@ -14,9 +14,15 @@ class LoxInstance {
     }
 
     Object get(Token name) {
+        // When looking up a property on an instance, if we don’t find a matching field,
+        //  we look for a method with that name on the instance’s class.
         if (fields.containsKey(name.lexeme)) {
             return fields.get(name.lexeme);
         }
+
+        LoxFunction method = klass.findMethod(name.lexeme);
+        if (method != null) return method;
+
 
         throw new RuntimeError(name, "Undefined property '" + name.lexeme + "'.");
     }
