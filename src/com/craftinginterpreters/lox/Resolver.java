@@ -24,7 +24,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
         this.interpreter = interpreter;
     }
 
-    // Effective Stmts
+    //! Effective Stmts
 
     @Override
     public Void visitBlockStmt(Stmt.Block stmt) {
@@ -69,7 +69,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
         return null;
     }
 
-    // Stmts for traverse
+    //! Stmts for traverse
 
     @Override
     public Void visitClassStmt(Stmt.Class stmt) {
@@ -77,11 +77,26 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
         declare(stmt.name);
         define(stmt.name);
 
+        // Before we step in and start resolving the method bodies, we push a new scope 
+        // and define “this” in it as if it were a variable.
+        beginScope();
+        scopes.peek().put("this", true);
+
         // resolve each method of the class
         for (Stmt.Function method : stmt.methods) {
             FunctionType declaration = FunctionType.METHOD;
             resolveFunction(method, declaration);
         }
+
+        // Then, when we’re done, we discard that surrounding scope.
+        endScope();
+
+        // Now, whenever a this expression is encountered (at least inside a method) 
+        // it will resolve to a “local variable” defined in 
+        // an implicit scope just outside of the block for the method body. (resolveFunction creates a new scope)
+
+        // The resolver has a new scope for this , 
+        // so the interpreter needs to create a corresponding environment for it.
         return null;
     }
     
@@ -130,7 +145,13 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     
 
     
-    // Effective Exprs
+    //! Effective Exprs
+
+    @Override
+    public Void visitThisExpr(Expr.This expr) {
+        resolveLocal(expr, expr.keyword);
+        return null;
+    }
 
     @Override
     public Void visitVariableExpr(Expr.Variable expr) {
@@ -155,7 +176,7 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
         return null;
     }
 
-    // Exprs for traverse
+    //! Exprs for traverse
 
     @Override
     public Void visitSetExpr(Expr.Set expr) {
@@ -221,6 +242,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     
     // Helper Functions
 
+    // expr is used to identify which syntax tree node has part to be resolved
+    // name is used to find the corresponding environment
     private void resolveLocal(Expr expr, Token name){
         for (int i = scopes.size() - 1; i >= 0; i --) {
             // from the innermost scope and work outwards

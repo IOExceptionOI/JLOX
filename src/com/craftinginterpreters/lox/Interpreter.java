@@ -31,6 +31,7 @@ public class Interpreter implements Expr.Visitor<Object>,
 
    
 
+    
     @Override
     public Void visitClassStmt(Stmt.Class stmt) {
         // spilt the declaration and definition for allowing reference to the class inside its own method
@@ -118,8 +119,13 @@ public class Interpreter implements Expr.Visitor<Object>,
     }
 
 
-    // Exprs
+    //! Exprs
     
+    @Override
+    public Object visitThisExpr(Expr.This expr) {
+        return lookUpVariable(expr.keyword, expr);
+    }
+
     @Override
     public Object visitSetExpr(Expr.Set expr) {
         Object object = evaluate(expr.object);
