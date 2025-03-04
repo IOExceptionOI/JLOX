@@ -7,6 +7,7 @@ abstract class Expr{
     abstract <R> R accept(Visitor<R> visitor);
 
     interface Visitor<R>{
+        R visitSuperExpr(Super expr);
         R visitThisExpr(This expr);
         R visitSetExpr(Set expr);
         R visitGetExpr(Get expr);
@@ -20,6 +21,21 @@ abstract class Expr{
         R visitVariableExpr(Variable expr);
     }
 
+    static class Super extends Expr{
+        Super(Token keyword, Token method){
+            this.keyword = keyword;
+            this.method = method;
+        }
+
+        final Token keyword;
+        final Token method;
+
+        @Override
+        <R> R accept(Visitor<R> visitor){
+            return visitor.visitSuperExpr(this);
+        }
+
+    }
     static class This extends Expr{
         This(Token keyword){
             this.keyword = keyword;

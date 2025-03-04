@@ -89,6 +89,23 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
         declare(stmt.name);
         define(stmt.name);
 
+        if (stmt.superclass != null && stmt.name.lexeme.equals(stmt.superclass.name.lexeme)) {
+            Lox.error(stmt.superclass.name, "A class can't inherit from itself.");
+        }
+
+        // only when superclass exists do the resovler resolve the superclass
+        if (stmt.superclass != null) {
+            resolve(stmt.superclass);
+        }
+
+        // If the class declaration has a superclass, then we create a new scope surrounding all of its methods.
+        if (stmt.superclass != null) {
+            beginScope();
+            scopes.peek().put("super", true);
+        }
+
+
+
         // Before we step in and start resolving the method bodies, we push a new scope 
         // and define “this” in it as if it were a variable.
         beginScope();
@@ -112,6 +129,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
         // The resolver has a new scope for this , 
         // so the interpreter needs to create a corresponding environment for it.
+
+        // Once we’re done resolving the class(has superclass)’s methods, we discard that scope.
+        if (stmt.superclass != null) endScope();
 
         // Recover to the enclosingClass
         currentClass = enclosingClass;
@@ -170,6 +190,12 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     
     //! Effective Exprs
 
+    @Override
+    public Void visitSuperExpr(Expr.Super expr) {
+        resolveLocal(expr, expr.keyword);
+        return null;
+    }
+    
     @Override
     public Void visitThisExpr(Expr.This expr) {
         // "this" can only occur in methods

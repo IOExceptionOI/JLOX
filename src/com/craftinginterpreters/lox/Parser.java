@@ -45,9 +45,21 @@ public class Parser {
         }
     }
 
-    //! classDecl -> "class" IDENTIFIER "{" function* "}"
+    //! classDecl -> "class" IDENTIFIER ("<" IDENTIFIER) ? "{" function* "}"
     private Stmt classDeclaration(){
         Token name = consume(IDENTIFIER, "Expect class name.");
+
+        /*
+         * The grammar restricts the superclass clause to a single identifier, 
+         * but at runtime, that identifier is evaluated as a variable access. 
+         * Wrapping the name in an Expr.Variable early on in the parser 
+         * gives us an object that the resolver can hang the resolution information off of.
+         */
+        Expr.Variable superclass = null;
+        if (match(LESS)) {
+            consume(IDENTIFIER, "Expect superclass name.");
+            superclass = new Expr.Variable(previous());
+        }
         consume(LEFT_BRACE, "Expect '{' before class body.");
 
         List<Stmt.Function> methods = new ArrayList<>();
@@ -57,7 +69,7 @@ public class Parser {
 
         consume(RIGHT_BRACE, "Expect '}' after class body.");
 
-        return new Stmt.Class(name, methods);
+        return new Stmt.Class(name, superclass, methods);
     }
     
     //! function -> IDENTIFIER "(" parameters?")" block
@@ -441,35 +453,42 @@ public class Parser {
 
         return new Expr.Call(callee, paren, arguments);
     }
-    //! primary -> NUMBER | STRING | "true" | "false" | "nil"
-    //!          | IDENTIFIER
-    //!          | "(" expression ")"
+    //! primary -> "true" | "false" | "nil" | "this"
+    //!          | IDENTIFIER | NUMBER | STRING | "(" expression ")"
+    //!          | "super" "." IDENTIFIER      
     private Expr primary(){
-        if(match(FALSE)) return new Expr.Literal(false);
-        if(match(TRUE))  return new Expr.Literal(true);
-        if(match(NIL))   return new Expr.Literal(null);
+        if (match(FALSE)) return new Expr.Literal(false);
+        if (match(TRUE))  return new Expr.Literal(true);
+        if (match(NIL))   return new Expr.Literal(null);
+        if (match(THIS)) return new Expr.This(previous());
 
-        if(match(NUMBER, STRING)){
+        if (match(NUMBER, STRING)){
             return new Expr.Literal(previous().literal);
         }
 
-        if (match(THIS)) return new Expr.This(previous());
-
-        if(match(IDENTIFIER)){
+        if (match(IDENTIFIER)){
             return new Expr.Variable(previous());
         }
         
-        if(match(LEFT_PAREN)){
+        if (match(LEFT_PAREN)){
             Expr expr = expression();
             consume(RIGHT_PAREN, "Expect ')' after expression");
             return new Expr.Grouping(expr);
+        }
+
+        if (match(SUPER)) {
+            Token keyword = previous();
+            consume(DOT, "Expect '.' after 'super'.");
+            Token method = consume(IDENTIFIER, "Expect superclass method name.");
+            
+            return new Expr.Super(keyword, method);
         }
 
         throw error(peek(), "Expect exprssion.");
     }
     
     private Token consume(TokenType type, String message){
-        if(check(type)){
+        if (check(type)){
             return advance();
         }
 

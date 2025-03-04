@@ -5,16 +5,24 @@ import java.util.Map;
 
 class LoxClass implements LoxCallable{
     final String name;
-    private final Map<String, LoxFunction> methods;
+    final Map<String, LoxFunction> methods;
+    private final LoxClass superclass;
 
-    LoxClass(String name, Map<String, LoxFunction> methods) {
+    LoxClass(String name, LoxClass superclass, Map<String, LoxFunction> methods) {
         this.name = name;
+        this.superclass = superclass;
         this.methods = methods;
     }
 
     LoxFunction findMethod(String name) {
         if (methods.containsKey(name)) {
             return methods.get(name);
+        }
+
+        // methods are inherited from the superclass.
+        // if we don’t find it on the instance’s class, we recurse up through the superclass chain and look there.
+        if (superclass != null) {
+            return superclass.findMethod(name);
         }
 
         return null;
@@ -43,6 +51,6 @@ class LoxClass implements LoxCallable{
 
     @Override
     public String toString() {
-        return name;
+        return "class: " + name + (superclass != null ? " < " + superclass : "");
     }
 }
