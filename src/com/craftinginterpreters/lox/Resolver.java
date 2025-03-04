@@ -1,7 +1,5 @@
 package com.craftinginterpreters.lox;
 
-
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,11 +10,20 @@ import java.util.Stack;
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
     private final Interpreter interpreter;
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
+    private ClassType currentClass = ClassType.NONE;
     private FunctionType currentFunction = FunctionType.NONE;
     
+    // Its value tells us if we are currently inside a class declaration while traversing the syntax tree.
+    private enum ClassType {
+        NONE,
+        CLASS
+    }
+
+    // Its value tells us if we are currently inside a function declaration while traversing the syntax tree.
     private enum FunctionType {
         NONE,
         FUNCTION,
+        INITIALIZER,
         METHOD
     }
 
@@ -73,6 +80,11 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitClassStmt(Stmt.Class stmt) {
+        // Record the enclosing Class
+        ClassType enclosingClass = currentClass;
+        // Switch to the CLASS type (because we're currently visit ClassDecl Stmt)
+        currentClass = ClassType.CLASS;
+
         // declare and define the name of the class for forward reference inside the class body
         declare(stmt.name);
         define(stmt.name);
@@ -85,6 +97,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
         // resolve each method of the class
         for (Stmt.Function method : stmt.methods) {
             FunctionType declaration = FunctionType.METHOD;
+            if (method.name.lexeme.equals("init")) {
+                declaration = FunctionType.INITIALIZER;
+            }
             resolveFunction(method, declaration);
         }
 
@@ -97,6 +112,9 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
         // The resolver has a new scope for this , 
         // so the interpreter needs to create a corresponding environment for it.
+
+        // Recover to the enclosingClass
+        currentClass = enclosingClass;
         return null;
     }
     
@@ -129,7 +147,12 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
             Lox.error(stmt.keyword, "Can't return from top-level code.");
         }
 
-        if (stmt.value != null) resolve(stmt.value);
+        if (stmt.value != null) {
+            if (currentFunction == FunctionType.INITIALIZER) {
+                Lox.error(stmt.keyword, "Can't return a value from an initializer.");
+            }
+            resolve(stmt.value);
+        }
         return null;
     }
 
@@ -149,6 +172,12 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>{
 
     @Override
     public Void visitThisExpr(Expr.This expr) {
+        // "this" can only occur in methods
+        if (currentClass == ClassType.NONE) {
+            Lox.error(expr.keyword, "Can't use 'this' outside of a class");
+            return null;
+        }
+
         resolveLocal(expr, expr.keyword);
         return null;
     }

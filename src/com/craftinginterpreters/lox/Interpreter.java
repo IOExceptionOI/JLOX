@@ -41,7 +41,9 @@ public class Interpreter implements Expr.Visitor<Object>,
         Map<String, LoxFunction> methods = new HashMap<>();
         for (Stmt.Function method : stmt.methods) {
             // the current environment where the class is defined is the closure ot the methods
-            LoxFunction function = new LoxFunction(method, environment);
+            // For methods, we check the name. If it equals with "init", we set the isInitializer to true to make it always return 'this'
+            LoxFunction function = new LoxFunction(method, environment,
+                method.name.lexeme.equals("init"));
             methods.put(method.name.lexeme, function);
         }
 
@@ -62,7 +64,8 @@ public class Interpreter implements Expr.Visitor<Object>,
     @Override
     public Void visitFunctionStmt(Stmt.Function stmt){
         // the visit of Function(Decl) translate it to LoxFunction
-        LoxFunction function = new LoxFunction(stmt, environment);
+        // For actual function declarations, isInitializer is always false.
+        LoxFunction function = new LoxFunction(stmt, environment, false);
         // and bind the Function(Decl) name to the invocable Loxfunction
         environment.define(stmt.name.lexeme, function);
         return null;

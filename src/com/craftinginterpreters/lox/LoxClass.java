@@ -21,12 +21,23 @@ class LoxClass implements LoxCallable{
     }
     @Override
     public int arity() {
-        return 0;
+        LoxFunction initializer = findMethod("init");
+        if (initializer == null) return 0;
+        return initializer.arity();
     }
 
     @Override
     public Object call(Interpreter interpreter, List<Object> arguments) {
         LoxInstance instance = new LoxInstance(this);
+        // When a class is called, after the LoxInstance is created, 
+        // we look for an “init” method. If we find one, we immediately bind and invoke it just like a normal method call.
+        LoxFunction initializer = findMethod("init");
+
+        if (initializer != null) {
+            // if the initializer exists, bind the newly created instance to 'this' in the enclosing environment of the init method
+            // and then call the init method
+            initializer.bind(instance).call(interpreter, arguments);
+        }
         return instance;
     }
 

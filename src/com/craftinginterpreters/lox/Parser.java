@@ -67,7 +67,7 @@ public class Parser {
 
         //! parameters -> IDENTIFIER ("," IDENTIFER)*
         List<Token> parameters = new ArrayList<>();
-        if(!check(RIGHT_PAREN)){
+        if (!check(RIGHT_PAREN)) {
             do { 
                 if(parameters.size() >= 255){
                     error(peek(), "Can't have more than 255 parameters.");
@@ -454,7 +454,7 @@ public class Parser {
         }
 
         if (match(THIS)) return new Expr.This(previous());
-        
+
         if(match(IDENTIFIER)){
             return new Expr.Variable(previous());
         }
