@@ -47,6 +47,8 @@ public class Interpreter implements Expr.Visitor<Object>,
         // spilt the declaration and definition for allowing reference to the class inside its own method
         environment.define(stmt.name.lexeme, null);
 
+        // if the class has a superclass, we need to add an enclosing environment for 'super' 
+        // between the original closure and the environment for the method 
         if (stmt.superclass != null) {
             environment = new Environment(environment);
             environment.define("super", superclass);
@@ -64,6 +66,8 @@ public class Interpreter implements Expr.Visitor<Object>,
 
         LoxClass klass = new LoxClass(stmt.name.lexeme, (LoxClass)superclass, methods);
 
+        // after we add an enclosing environment for 'super', we backtrace to the original environment
+        // because we only need this new environment to create the environment for 'super'
         if (superclass != null) {
             environment = environment.enclosing;
         }
@@ -146,6 +150,10 @@ public class Interpreter implements Expr.Visitor<Object>,
     
     @Override
     public Object visitSuperExpr(Expr.Super expr) {
+        // We look up the surrounding class’s superclass by looking up “super” in the proper environment.
+        // actually, 'super' is in the second enclosing environment
+        // and 'this' is in the first enclosing environment
+        // so we can change the locals.get(expr) directly to 2
         int distance = locals.get(expr);
         LoxClass superclass = (LoxClass)environment.getAt(distance, "super");
         LoxInstance object = (LoxInstance)environment.getAt(distance - 1, "this");
@@ -155,8 +163,15 @@ public class Interpreter implements Expr.Visitor<Object>,
         if (method == null) {
             throw new RuntimeError(expr.method, "Undefined property '" + expr.method.lexeme +"'.");
         }
+        /*
+         * When we access a method, we also need to bind this to the object the method is accessed from.
+         * In an expression like doughnut.cook , the object is whatever we get from evaluating doughnut . In a super expression like super.cook , 
+         * the current object is implicitly the same current object that we’re using. 
+         * In other words, this . Even though we are looking up the method on the superclass, the instance is still this .
+         */
         return method.bind(object);
     }
+    
     @Override
     public Object visitThisExpr(Expr.This expr) {
         return lookUpVariable(expr.keyword, expr);
